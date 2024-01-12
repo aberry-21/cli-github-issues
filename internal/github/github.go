@@ -21,7 +21,7 @@ const (
 
 type Client struct {
 	client  *http.Client
-	baseUrl *url.URL
+	BaseUrl *url.URL
 	common  service
 	Issues  *IssuesService
 }
@@ -53,10 +53,12 @@ func NewClient(client *http.Client, token string) (*Client, error) {
 func (c *Client) initialize() error {
 	c.common.client = c
 
-	var err error
-	c.baseUrl, err = url.Parse(defaultBaseURL)
-	if err != nil {
-		return err
+	if c.BaseUrl == nil {
+		var err error
+		c.BaseUrl, err = url.Parse(defaultBaseURL)
+		if err != nil {
+			return err
+		}
 	}
 
 	c.Issues = (*IssuesService)(&c.common)
@@ -64,7 +66,7 @@ func (c *Client) initialize() error {
 }
 
 func (c *Client) NewRequest(method string, urlStr string, body any) (*http.Request, error) {
-	fullUrl, err := c.baseUrl.Parse(urlStr)
+	fullUrl, err := c.BaseUrl.Parse(urlStr)
 	if err != nil {
 		return nil, err
 	}
@@ -118,6 +120,6 @@ func (fn roundTripperFunc) RoundTrip(r *http.Request) (*http.Response, error) {
 	return fn(r)
 }
 
-// String is a helper routine that allocates a new string value
-// to store v and returns a pointer to it.
 func String(v string) *string { return &v }
+
+func Int(v int) *int { return &v }

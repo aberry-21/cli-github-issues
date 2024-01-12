@@ -1,169 +1,155 @@
 package github
 
 import (
+	"encoding/json"
+	"fmt"
+	"github.com/google/go-cmp/cmp"
 	"net/http"
-	"reflect"
 	"testing"
 )
 
-func TestIssuesService_Create(t *testing.T) {
-	type args struct {
-		owner string
-		repo  string
-		issue *IssueRequest
-	}
-	tests := []struct {
-		name           string
-		args           args
-		wantIssueBody  string
-		wantIssueTitle string
-		wantIssueState string
-		wantErr        bool
-	}{
-		{
-			name: "Successfully result",
-			args: args{
-				owner: testOwner,
-				repo:  testRepo,
-				issue: &IssueRequest{
-					Title: String("test title"),
-					Body:  String("test body"),
-				},
-			},
-			wantIssueBody:  "test body",
-			wantIssueTitle: "test title",
-			wantIssueState: "open",
-		},
-	}
-
-	c, _ := NewClient(http.DefaultClient, testToken)
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, _, err := c.Issues.Create(tt.args.owner, tt.args.repo, tt.args.issue)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Create() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			// Check title
-			if got.Title != nil && !reflect.DeepEqual(*got.Title, tt.wantIssueTitle) {
-				t.Errorf("Create() got.Title = %v, want.Title %v", got, tt.wantIssueTitle)
-			}
-			// Check issue body
-			if got.Body != nil && !reflect.DeepEqual(*got.Body, tt.wantIssueBody) {
-				t.Errorf("Create() got.Body = %v, want.Body %v", got, tt.wantIssueBody)
-			}
-			// Check issue state
-			if got.State != nil && !reflect.DeepEqual(*got.State, tt.wantIssueState) {
-				t.Errorf("Create() got.State = %v, want.State %v", got, tt.wantIssueState)
-			}
-		})
-	}
-}
-
 func TestIssuesService_Get(t *testing.T) {
-	type args struct {
-		owner  string
-		repo   string
-		number int
+	setupTest()
+
+	mux.Handle("/repos/testOwner/testRepo/issues/1", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, http.MethodGet)
+		testHeader(t, r, testHeaderAccept, testDefaultMediaType)
+		testHeader(t, r, testHeaderAPIVersion, testDefaultAPIVersion)
+		testHeader(t, r, testHeaderAuthorization, "Bearer "+testToken)
+
+		if r.ContentLength != 0 {
+			t.Errorf("Issues.Get() got = %v, want %v", r.ContentLength, 0)
+		}
+
+		// create test response
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, `{"number":1, "title": "Issue", "body": "Body"}`)
+	}))
+
+	issue, resp, err := client.Issues.Get("testOwner", "testRepo", 1)
+
+	// check issue
+	want := &Issue{
+		Number: Int(1),
+		Title:  String("Issue"),
+		Body:   String("Body"),
 	}
-	tests := []struct {
-		name           string
-		s              IssuesService
-		args           args
-		wantIssueBody  string
-		wantIssueTitle string
-		wantIssueState string
-		wantErr        bool
-	}{
-		{
-			name: "Successfully result",
-			args: args{
-				owner:  testOwner,
-				repo:   testRepo,
-				number: 1,
-			},
-			wantIssueBody:  "Test",
-			wantIssueTitle: "Test",
-			wantIssueState: "open",
-		},
+	if !cmp.Equal(issue, want) {
+		t.Errorf("Issues.Get() got = %v, want %v", issue, want)
 	}
 
-	c, _ := NewClient(http.DefaultClient, testToken)
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, _, err := c.Issues.Get(tt.args.owner, tt.args.repo, tt.args.number)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Get() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			// Check title
-			if got.Title != nil && !reflect.DeepEqual(*got.Title, tt.wantIssueTitle) {
-				t.Errorf("Get() got.Title = %v, want.Title %v", got, tt.wantIssueTitle)
-			}
-			// Check issue body
-			if got.Body != nil && !reflect.DeepEqual(*got.Body, tt.wantIssueBody) {
-				t.Errorf("Get() got.Body = %v, want.Body %v", got, tt.wantIssueBody)
-			}
-			// Check issue state
-			if got.State != nil && !reflect.DeepEqual(*got.State, tt.wantIssueState) {
-				t.Errorf("Get() got.State = %v, want.State %v", got, tt.wantIssueState)
-			}
-		})
+	// check response
+	if resp == nil {
+		t.Errorf("Issues.Get() got = %v, want %v", issue, want)
+	}
+	if resp != nil && resp.StatusCode != http.StatusOK {
+		t.Errorf("Issues.Get() got = %v, want %v", resp.StatusCode, http.StatusOK)
+	}
+
+	// check error
+	if err != nil {
+		t.Errorf("Issues.Get() error = %v, wantErr %v", err, nil)
+		return
 	}
 }
 
 func TestIssuesService_Update(t *testing.T) {
-	type args struct {
-		owner  string
-		repo   string
-		number int
-		issue  *IssueRequest
+	setupTest()
+
+	mux.Handle("/repos/testOwner/testRepo/issues/1", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, http.MethodPatch)
+		testHeader(t, r, testHeaderAccept, testDefaultMediaType)
+		testHeader(t, r, testHeaderAPIVersion, testDefaultAPIVersion)
+		testHeader(t, r, testHeaderAuthorization, "Bearer "+testToken)
+
+		// create test response
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, `{"number":1, "title": "Updated Issue", "body": "Updated Body"}`)
+	}))
+
+	// Call the Update method with valid input
+	issueRequest := &IssueRequest{
+		Title: String("Updated Issue"),
+		Body:  String("Updated Body"),
 	}
-	tests := []struct {
-		name           string
-		args           args
-		wantIssueBody  string
-		wantIssueTitle string
-		wantIssueState string
-		wantErr        bool
-	}{
-		{
-			name: "Successfully result",
-			args: args{
-				owner: testOwner,
-				repo:  testRepo,
-				issue: &IssueRequest{
-					Title: String("test title"),
-					Body:  String("test body"),
-				},
-				number: 1,
-			},
-			wantIssueBody:  "test body",
-			wantIssueTitle: "test title",
-			wantIssueState: "open",
-		},
+	issue, resp, err := client.Issues.Update("testOwner", "testRepo", 1, issueRequest)
+
+	// check issue
+	want := &Issue{
+		Number: Int(1),
+		Title:  String("Updated Issue"),
+		Body:   String("Updated Body"),
+	}
+	if !cmp.Equal(issue, want) {
+		t.Errorf("Issues.Update() got = %v, want %v", issue, want)
 	}
 
-	c, _ := NewClient(http.DefaultClient, testToken)
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, _, err := c.Issues.Update(tt.args.owner, tt.args.repo, tt.args.number, tt.args.issue)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Update() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			// Check title
-			if got.Title != nil && !reflect.DeepEqual(*got.Title, tt.wantIssueTitle) {
-				t.Errorf("Update() got.Title = %v, want.Title %v", got, tt.wantIssueTitle)
-			}
-			// Check issue body
-			if got.Body != nil && !reflect.DeepEqual(*got.Body, tt.wantIssueBody) {
-				t.Errorf("Update() got.Body = %v, want.Body %v", got, tt.wantIssueBody)
-			}
-			// Check issue state
-			if got.State != nil && !reflect.DeepEqual(*got.State, tt.wantIssueState) {
-				t.Errorf("Update() got.State = %v, want.State %v", got, tt.wantIssueState)
-			}
-		})
+	// check response
+	if resp == nil {
+		t.Errorf("Issues.Update() got = %v, want %v", issue, want)
+	}
+	if resp != nil && resp.StatusCode != http.StatusOK {
+		t.Errorf("Issues.Update() got = %v, want %v", resp.StatusCode, http.StatusOK)
+	}
+
+	// check error
+	if err != nil {
+		t.Errorf("Issues.Update() error = %v, wantErr %v", err, nil)
+		return
+	}
+}
+
+func TestIssuesService_Create(t *testing.T) {
+	setupTest()
+
+	// Prepare the issue request
+	issueRequest := &IssueRequest{
+		Title: String("Test Issue"),
+		Body:  String("This is a test issue"),
+	}
+
+	mux.Handle("/repos/testOwner/testRepo/issues", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		v := new(IssueRequest)
+		assertNilError(t, json.NewDecoder(r.Body).Decode(v))
+
+		testMethod(t, r, http.MethodPost)
+		testHeader(t, r, testHeaderAccept, testDefaultMediaType)
+		testHeader(t, r, testHeaderAPIVersion, testDefaultAPIVersion)
+		testHeader(t, r, testHeaderAuthorization, "Bearer "+testToken)
+
+		if !cmp.Equal(v, issueRequest) {
+			t.Errorf("Issues.Create() got = %v, want %v", v, issueRequest)
+		}
+
+		// create test response
+		w.WriteHeader(http.StatusCreated)
+		fmt.Fprintf(w, `{"number":1, "title": "Test Issue", "body": "This is a test issue"}`)
+	}))
+
+	// Create the issue
+	issue, resp, err := client.Issues.Create("testOwner", "testRepo", issueRequest)
+
+	// check issue
+	want := &Issue{
+		Number: Int(1),
+		Title:  String("Test Issue"),
+		Body:   String("This is a test issue"),
+	}
+	if !cmp.Equal(issue, want) {
+		t.Errorf("Issues.Create() got = %v, want %v", issue, want)
+	}
+
+	// check response
+	if resp == nil {
+		t.Errorf("Issues.Create() got = %v, want %v", issue, want)
+	}
+	if resp != nil && resp.StatusCode != http.StatusCreated {
+		t.Errorf("Issues.Create() got = %v, want %v", resp.StatusCode, http.StatusCreated)
+	}
+
+	// check error
+	if err != nil {
+		t.Errorf("Issues.Create() error = %v, wantErr %v", err, nil)
+		return
 	}
 }

@@ -3,6 +3,7 @@ module cli-github-issues
 go 1.21
 
 require (
+	github.com/google/go-cmp v0.5.9
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.18.2
 )

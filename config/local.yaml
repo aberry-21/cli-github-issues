@@ -1,5 +1,5 @@
-editor: "code"
+editor: "vim"
 github:
-  owner: "aberry-21"
-  repo: "BeautifulNumber"
+  owner: ""
+  repo: ""
   token: ""

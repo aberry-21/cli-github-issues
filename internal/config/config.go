@@ -18,27 +18,28 @@ type Github struct {
 	Token string `mapstructure:"token"`
 }
 
+// MustLoad loads config file and returns config struct.
 func MustLoad(cfgFile string) *Config {
 	if cfgFile != "" {
 		// Use config file from the flag.
 		viper.SetConfigFile(cfgFile)
 	} else {
-		// Find home directory.
+		// Use the user's home directory to search for the config file
 		home, err := os.UserHomeDir()
 		cobra.CheckErr(err)
 
-		// Search config in home directory with name "cli-github-issues.cobra" (without extension).
+		// Search config with name "cli-github-issues.cobra.yaml" in home directory
 		viper.AddConfigPath(home)
 		viper.SetConfigType("yaml")
 		viper.SetConfigName("cli-github-issues.cobra")
 	}
 
-	//viper.AutomaticEnv()
-
+	// Read the config file
 	if err := viper.ReadInConfig(); err != nil {
 		log.Fatalf("cannot read config: %s", err)
 	}
 
+	// Unmarshal config
 	var cfg Config
 	err := viper.Unmarshal(&cfg)
 	if err != nil {
